@@ -1,2 +1,2 @@
-# violin_plots
-Library for constructing high-quality violin plots.
+# ViolinPlots
+Library for constructing beautiful and reproducible violin plots.
