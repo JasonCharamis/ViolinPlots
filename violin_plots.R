@@ -1,5 +1,5 @@
 
-dependencies <- ( "svglite", "ggplot2", "ggrepel", "ggthemes", "stringr", "dplyr", "ggbreak")
+dependencies <- c( "svglite", "ggplot2", "ggrepel", "ggthemes", "stringr", "dplyr", "ggbreak")
 
 package_install(dependencies)
 
