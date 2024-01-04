@@ -20,6 +20,7 @@ for ( pkg in dependencies ) {
   package_install(pkg)
 }
 
+## Function to color  
 mark_genes <- function(expression_df, selected_genes, selected_genes_color, parent_color, transparency) { 
   
   expression_df$PointColor <- "snow4"
