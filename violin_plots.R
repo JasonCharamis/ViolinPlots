@@ -58,8 +58,9 @@ expression_violin_plot <- function (filename, title = "Violin Plot of Gene Expre
  
   if ("Mean_Expression" %in% colnames(expression_data)) {
         selected_genes_df <- read.delim(selected_genes, header = FALSE)
-        expression_data <- mark_genes(expression_df = expression_data, selected_genes = selected_genes_df, selected_genes_color = selected_genes_color, 
-                                    parent_color = parent_color, transparency = transparency)
+        expression_data <- mark_genes(expression_df = expression_data, selected_genes = selected_genes_df, 
+                                      selected_genes_color = selected_genes_color, parent_color = parent_color, 
+                                      transparency = transparency)
     }
   
   if (nrow(expression_data) == 0) {
