@@ -1,42 +1,77 @@
-dependencies <- c("svglite", "ggplot2", "ggrepel", "ggthemes", "stringr", "dplyr", "ggbreak")
 
-for (pkg in dependencies) {
-  if (!requireNamespace(pkg, quietly = TRUE)) {
-    install.packages(pkg)
+package_install <- function(package_name) {
+  if (requireNamespace(package_name, quietly = TRUE)) {
+    library(package_name, character.only = TRUE)
+  } else {
+    print(sprintf("%s %s", package_name, "is not installed. Installing it!"))
+    is_available <- BiocManager::available(package_name)
+    
+    if (any(is_available == "TRUE")) {
+      BiocManager::install(package_name, dependencies = TRUE, update = TRUE)
+    } else {
+      install.packages(package_name, dependencies = TRUE, ask = FALSE, reinstall = TRUE)
+    }
   }
 }
 
-## genes to mark in violin plot
+dependencies <- c("svglite", "ggplot2", "ggrepel", "ggthemes", "stringr", "dplyr", "ggbreak","tidyverse")
 
-violin_plot <- function (filename, title, selected_genes1, scolor, ... ) {
+for ( pkg in dependencies ) {
+  package_install(pkg)
+}
+
+mark_genes <- function(expression_df, selected_genes, selected_genes_color, parent_color, transparency) { 
+  
+  expression_df$PointColor <- "snow4"
+  
+  if (is.null(selected_genes)) {
+    expression_df <- expression_df %>% mutate(PointColor = "black")
+  } else {
+    expression_df <- expression_df %>% mutate(PointColor = sapply(GeneID, function(x) { 
+      if (grepl(x, selected_genes)) { 
+        PointColor = selected_genes_color
+      } else {
+        PointColor = alpha(parent_color, transparency)
+      }
+    }))
+  }
+  return(expression_df)
+}
+
+
+## genes to mark in violin plot
+expression_violin_plot <- function (filename, title = "Violin Plot of Gene Expression", selected_genes = NULL, 
+                                    selected_genes_color = "red", parent_color = "grey", transparency = 0.5, ... ) {
+  
   ## open file and keep Species name ##
   expression_data <- read.delim(filename, header = FALSE)
   species_name <- gsub("_.*", "", expression_data[, 1])
   expression_data$Species <- species_name
-  
-  ## create dataframe
   expression_data <- data.frame(GeneID = expression_data[, 1], expression_data[, 2:ncol(expression_data)])
   
-  ## collapse three replicates to one value - keep mean values for each species
-  for (i in 1:nrow(expression_data)) {
-    ## most species have three replicates, while some have two replicates
-    if (is.na(expression_data[i, 4])) {
-      expression_data$Mean_Expression[i] <- mean(expression_data[i, 2:3], na.rm = TRUE)
-    } else {
-      expression_data$Mean_Expression[i] <- mean(expression_data[i, 2:4], na.rm = TRUE)
-    }
-  }
+  ## Dynamically identify expression column names, while also avoiding the first (GeneID) and last (Mean_Expression-will be added) columns
+  columns_to_average <- names(expression_data)[-c(1, ncol(expression_data))]
   
-  expression_data <- expression_data %>%
-    mutate(PointColor = case_when( GeneID %in% selected_genes1 ~ "red", 
-                                   TRUE ~ "black" ))
-
-  ## Using ggplot2 to create the violin plot
-  ggplot(expression_data, aes(x = Species, y = Mean_Expression)) +
-    geom_violin(trim = FALSE, fill = "grey", draw_quantiles = c(0, 0.25, 0.5, 0.75), scale = "area", alpha = 0.05) + 
-    geom_jitter(aes(color = PointColor, fill = PointColor), width = 0.4, size = 2.5) +
-    scale_color_identity() + scale_fill_identity() +
-    labs(title = title, y = "Normalized Expression") +
-    theme_minimal() 
+  for (i in 1:nrow(expression_data)) {
+    expression_data$Mean_Expression[i] <- rowMeans(expression_data[i, columns_to_average], na.rm = TRUE)
+  }
+ 
+  if ("Mean_Expression" %in% colnames(expression_data)) {
+        selected_genes_df <- read.delim(selected_genes, header = FALSE)
+        expression_data <- mark_genes(expression_df = expression_data, selected_genes = selected_genes_df, selected_genes_color = selected_genes_color, 
+                                    parent_color = parent_color, transparency = transparency)
+    }
+  
+  if (nrow(expression_data) == 0) {
+    stop("Error: No data available after processing.")
+  } else { ## Use ggplot2 with geom_violin and geom_jitter to create the violin plot
+        ggplot(expression_data, aes(x = Species, y = Mean_Expression)) +
+          geom_violin(trim = FALSE, fill = "grey", draw_quantiles = c(0, 0.25, 0.5, 0.75), scale = "area", alpha = 0.05) + 
+          geom_jitter(aes(color = PointColor, fill = PointColor), width = 0.4, size = 2) +
+          scale_color_identity() + scale_fill_identity() + 
+          labs(title = title, y = "Normalized Expression") + 
+          theme_minimal() +
+          theme(plot.title = element_text(hjust = 0.5))
+      }
 }
 
