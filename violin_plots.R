@@ -20,7 +20,7 @@ for ( pkg in dependencies ) {
   package_install(pkg)
 }
 
-## Function to color  
+## Function to color points in scatterplot, including distinct colors for specified gene ids
 mark_genes <- function(expression_df, selected_genes, selected_genes_color, parent_color, transparency) { 
   
   expression_df$PointColor <- "snow4"
@@ -40,9 +40,10 @@ mark_genes <- function(expression_df, selected_genes, selected_genes_color, pare
 }
 
 
-## genes to mark in violin plot
+## Function to create violin plots using the mean of gene expression data 
 expression_violin_plot <- function (filename, title = "Violin Plot of Gene Expression", selected_genes = NULL, 
-                                    selected_genes_color = "red", parent_color = "grey", transparency = 0.5, ... ) {
+                                    mode = "mean", selected_genes_color = "red", 
+                                    parent_color = "grey", transparency = 0.5, ... ) {
   
   ## open file and keep Species name ##
   expression_data <- read.delim(filename, header = FALSE)
@@ -53,16 +54,28 @@ expression_violin_plot <- function (filename, title = "Violin Plot of Gene Expre
   ## Dynamically identify expression column names, while also avoiding the first (GeneID) and last (Mean_Expression-will be added) columns
   columns_to_average <- names(expression_data)[-c(1, ncol(expression_data))]
   
-  for (i in 1:nrow(expression_data)) {
-    expression_data$Mean_Expression[i] <- rowMeans(expression_data[i, columns_to_average], na.rm = TRUE)
+  if ( mode == "mean" ) {
+    for (i in 1:nrow(expression_data)) {
+      expression_data$Mean_Expression[i] <- rowMeans(expression_data[i, columns_to_average], na.rm = TRUE)
+    }
+  }
+  
+  else if ( mode == "median" ) {
+    for (i in 1:nrow(expression_data)) {
+      expression_data$Median_Expression[i] <- rowMedians(expression_data[i, columns_to_average], na.rm = TRUE)
+    }
+  }
+  
+  else {
+    print ("Pick a valid option: Mean or Median value of replicates.")
   }
  
-  if ("Mean_Expression" %in% colnames(expression_data)) {
-        selected_genes_df <- read.delim(selected_genes, header = FALSE)
-        expression_data <- mark_genes(expression_df = expression_data, selected_genes = selected_genes_df, 
-                                      selected_genes_color = selected_genes_color, parent_color = parent_color, 
-                                      transparency = transparency)
-    }
+  if ("Mean_Expression" %in% colnames(expression_data) || "Median_Expression" %in% colnames(expression_data)) {
+          selected_genes_df <- read.delim(selected_genes, header = FALSE)
+          expression_data <- mark_genes(expression_df = expression_data, selected_genes = selected_genes_df, 
+                                        selected_genes_color = selected_genes_color, parent_color = parent_color, 
+                                        transparency = transparency)
+  }
   
   if (nrow(expression_data) == 0) {
     stop("Error: No data available after processing.")
@@ -74,6 +87,5 @@ expression_violin_plot <- function (filename, title = "Violin Plot of Gene Expre
           labs(title = title, y = "Normalized Expression") + 
           theme_minimal() +
           theme(plot.title = element_text(hjust = 0.5))
-      }
+  }
 }
-
